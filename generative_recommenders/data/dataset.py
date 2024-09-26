@@ -69,6 +69,7 @@ class DatasetV2(torch.utils.data.Dataset):
         user_id = data.user_id
 
         def eval_as_list(x: str, ignore_last_n: int) -> List[int]:
+            # zobin: cast the sequence_item_ids into a list
             y = eval(x)
             y_list = [y] if type(y) == int else list(y)
             if ignore_last_n > 0:
@@ -142,9 +143,12 @@ class DatasetV2(torch.utils.data.Dataset):
             assert len(y) == target_len
             return y
 
+        # zobin: historical is except the earlist one
         historical_ids = movie_history[1:]
         historical_ratings = movie_history_ratings[1:]
         historical_timestamps = movie_timestamps[1:]
+
+        # zobin: target is the latest engagement
         target_ids = movie_history[0]
         target_ratings = movie_history_ratings[0]
         target_timestamps = movie_timestamps[0]
@@ -192,7 +196,6 @@ class DatasetV2(torch.utils.data.Dataset):
 
 
 class MultiFileDatasetV2(DatasetV2, torch.utils.data.Dataset):
-
     def __init__(
         self,
         file_prefix: str,

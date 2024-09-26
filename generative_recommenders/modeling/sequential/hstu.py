@@ -47,7 +47,6 @@ TIMESTAMPS_KEY = "timestamps"
 
 
 class RelativeAttentionBiasModule(torch.nn.Module):
-
     @abc.abstractmethod
     def forward(
         self,
@@ -63,7 +62,6 @@ class RelativeAttentionBiasModule(torch.nn.Module):
 
 
 class RelativePositionalBias(RelativeAttentionBiasModule):
-
     def __init__(self, max_seq_len: int) -> None:
         super().__init__()
 
@@ -164,6 +162,8 @@ def _hstu_attention_maybe_from_cache(
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     B: int = x_offsets.size(0) - 1
     n: int = invalid_attn_mask.size(-1)
+
+    # zobin: pad q and k for attention operation (matmul)
     if delta_x_offsets is not None:
         padded_q, padded_k = cached_q, cached_k
         flattened_offsets = delta_x_offsets[1] + torch.arange(
@@ -194,6 +194,8 @@ def _hstu_attention_maybe_from_cache(
             .view(B, n, -1)
         )
     else:
+        # zobin: the offset here is to mark the beginning of each row
+        # zobin: we jagged x before, so here to need to pad back
         padded_q = torch.ops.fbgemm.jagged_to_padded_dense(
             values=q, offsets=[x_offsets], max_lengths=[n], padding_value=0.0
         )
@@ -201,6 +203,7 @@ def _hstu_attention_maybe_from_cache(
             values=k, offsets=[x_offsets], max_lengths=[n], padding_value=0.0
         )
 
+    # zobin: matmul
     qk_attn = torch.einsum(
         "bnhd,bmhd->bhnm",
         padded_q.view(B, n, num_heads, attention_dim),
@@ -210,6 +213,8 @@ def _hstu_attention_maybe_from_cache(
         qk_attn = qk_attn + rel_attn_bias(all_timestamps).unsqueeze(1)
     qk_attn = F.silu(qk_attn) / n
     qk_attn = qk_attn * invalid_attn_mask.unsqueeze(0).unsqueeze(0)
+
+    # zobin: here to jag again, why
     attn_output = torch.ops.fbgemm.dense_to_jagged(
         torch.einsum(
             "bhnm,bmhd->bnhd",
@@ -422,6 +427,7 @@ class SequentialTransductionUnitJagged(torch.nn.Module):
         else:
             o_input = u * self._norm_attn_output(attn_output)
 
+        # zobin: the x here is jagged, o_input is also jagged, so it's ok to do add
         new_outputs = (
             self._o(
                 F.dropout(
@@ -445,7 +451,6 @@ class SequentialTransductionUnitJagged(torch.nn.Module):
 
 
 class HSTUJagged(torch.nn.Module):
-
     def __init__(
         self,
         modules: List[SequentialTransductionUnitJagged],
@@ -521,6 +526,7 @@ class HSTUJagged(torch.nn.Module):
             x' = f(x), (B, N, D) x float
         """
         if len(x.size()) == 3:
+            # zobin: this op will drop zero element
             x = torch.ops.fbgemm.dense_to_jagged(x, [x_offsets])[0]
 
         jagged_x, cache_states = self.jagged_forward(
@@ -686,6 +692,7 @@ class HSTU(GeneralizedInteractionModule):
         float_dtype = past_embeddings.dtype
         B, N, _ = past_embeddings.size()
 
+        # zobin: positional encoding
         past_lengths, user_embeddings, _ = self._input_features_preproc(
             past_lengths=past_lengths,
             past_ids=past_ids,
@@ -693,7 +700,9 @@ class HSTU(GeneralizedInteractionModule):
             past_payloads=past_payloads,
         )
 
+        # zobin: input to HSTU blocks
         float_dtype = user_embeddings.dtype
+        # print(f"user_embeddings shape: {user_embeddings.shape}")
         user_embeddings, cached_states = self._hstu(
             x=user_embeddings,
             x_offsets=torch.ops.fbgemm.asynchronous_complete_cumsum(past_lengths),
@@ -707,6 +716,8 @@ class HSTU(GeneralizedInteractionModule):
             cache=cache,
             return_cache_states=return_cache_states,
         )
+
+        # zobin: output trun and normalization
         return self._output_postproc(user_embeddings), cached_states
 
     def forward(

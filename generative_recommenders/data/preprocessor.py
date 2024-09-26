@@ -91,6 +91,7 @@ class DataProcessor:
             },
             inplace=True,
         )
+        # print(ratings_data_transformed)
         return ratings_data_transformed
 
     def file_exists(self, name: str) -> bool:
@@ -273,7 +274,9 @@ class MovielensDataProcessor(DataProcessor):
                 "timestamps": list(ratings_group.unix_timestamp.apply(list)),
             }
         )
+        # print(seq_ratings_data)
 
+        # zobin: count the statistics of number of items rating by users
         result = pd.DataFrame([[]])
         for col in ["item_ids"]:
             result[col + "_mean"] = seq_ratings_data[col].apply(len).mean()
@@ -430,10 +433,14 @@ class AmazonDataProcessor(DataProcessor):
         return num_unique_items
 
 
-def get_common_preprocessors() -> Dict[
-    str,
-    Union[AmazonDataProcessor, MovielensDataProcessor, MovielensSyntheticDataProcessor],
-]:
+def get_common_preprocessors() -> (
+    Dict[
+        str,
+        Union[
+            AmazonDataProcessor, MovielensDataProcessor, MovielensSyntheticDataProcessor
+        ],
+    ]
+):
     ml_1m_dp = MovielensDataProcessor(  # pyre-ignore [45]
         "http://files.grouplens.org/datasets/movielens/ml-1m.zip",
         "tmp/movielens1m.zip",

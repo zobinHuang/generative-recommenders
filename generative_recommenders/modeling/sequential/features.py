@@ -45,6 +45,7 @@ def movielens_seq_features_from_row(
     target_timestamps = row["target_timestamps"].to(device).unsqueeze(1)
     if max_output_length > 0:
         B = historical_lengths.size(0)
+        # pad historical_ids from [128, 200] to [128. 211]
         historical_ids = torch.cat(
             [
                 historical_ids,

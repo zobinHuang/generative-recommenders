@@ -25,7 +25,6 @@ from torch.utils.checkpoint import checkpoint
 
 
 class NegativesSampler(torch.nn.Module):
-
     def __init__(self, l2_norm: bool, l2_norm_eps: float) -> None:
         super().__init__()
 
@@ -70,7 +69,6 @@ class NegativesSampler(torch.nn.Module):
 
 
 class LocalNegativesSampler(NegativesSampler):
-
     def __init__(
         self,
         num_items: int,
@@ -122,7 +120,6 @@ class LocalNegativesSampler(NegativesSampler):
 
 
 class InBatchNegativesSampler(NegativesSampler):
-
     def __init__(
         self,
         l2_norm: bool,
@@ -203,7 +200,6 @@ class InBatchNegativesSampler(NegativesSampler):
 
 
 class AutoregressiveLoss(torch.nn.Module):
-
     @abc.abstractmethod
     def jagged_forward(
         self,
@@ -482,7 +478,6 @@ class BCELossWithRatings(AutoregressiveLoss):
 
 
 class SampledSoftmaxLoss(AutoregressiveLoss):
-
     def __init__(
         self,
         num_to_sample: int,
@@ -566,6 +561,7 @@ class SampledSoftmaxLoss(AutoregressiveLoss):
         """
         assert output_embeddings.size() == supervision_embeddings.size()
         assert supervision_ids.size() == supervision_embeddings.size()[:-1]
+        # zobin: accumulate sum
         jagged_id_offsets = torch.ops.fbgemm.asynchronous_complete_cumsum(lengths)
         jagged_supervision_ids = (
             torch.ops.fbgemm.dense_to_jagged(

@@ -292,6 +292,9 @@ def train_fn(
             eval_data_sampler.set_epoch(epoch)
         model.train()
         for row in iter(train_data_loader):
+            # zobin: row is a batch!
+            # for key, value in row.items():
+            #     print(f"key: {key}, value: {value.shape}")
             seq_features, target_ids, target_ratings = movielens_seq_features_from_row(
                 row,
                 device=device,
@@ -343,6 +346,7 @@ def train_fn(
                 model.train()
 
             # TODO: consider separating this out?
+            # zobin: put the target id at the end of the sequence
             B, N = seq_features.past_ids.shape
             seq_features.past_ids.scatter_(
                 dim=1,
@@ -358,7 +362,8 @@ def train_fn(
                 past_embeddings=input_embeddings,
                 past_payloads=seq_features.past_payloads,
             )  # [B, X]
-
+            # zobin: [B, max_sequence_len, E(50)]
+            #           [128, 211,]
             supervision_ids = seq_features.past_ids
 
             if sampling_strategy == "in-batch":
@@ -385,6 +390,7 @@ def train_fn(
                 assert writer is not None
                 writer.add_scalar("losses/ar_loss", loss, batch_id)
 
+            # zobin: this would sync the gradient?
             loss.backward()
 
             # Optional linear warmup.

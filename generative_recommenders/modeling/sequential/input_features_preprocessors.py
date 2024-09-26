@@ -24,7 +24,6 @@ from generative_recommenders.modeling.initialization import truncated_normal
 
 
 class InputFeaturesPreprocessorModule(torch.nn.Module):
-
     @abc.abstractmethod
     def debug_str(self) -> str:
         pass
@@ -43,7 +42,6 @@ class InputFeaturesPreprocessorModule(torch.nn.Module):
 class LearnablePositionalEmbeddingInputFeaturesPreprocessor(
     InputFeaturesPreprocessorModule
 ):
-
     def __init__(
         self,
         max_sequence_len: int,
@@ -81,11 +79,17 @@ class LearnablePositionalEmbeddingInputFeaturesPreprocessor(
         B, N = past_ids.size()
         D = past_embeddings.size(-1)
 
+        # zobin: rescale to stablize training
+        # zobin: add positional embedding to past_embedding
+        # zobin: output is [B, N, D]
         user_embeddings = past_embeddings * (self._embedding_dim**0.5) + self._pos_emb(
             torch.arange(N, device=past_ids.device).unsqueeze(0).repeat(B, 1)
         )
+
+        # zobin: dropout to prevent over-training
         user_embeddings = self._emb_dropout(user_embeddings)
 
+        # zobin: mask out those padding part
         valid_mask = (past_ids != 0).unsqueeze(-1).float()  # [B, N, 1]
         user_embeddings *= valid_mask
         return past_lengths, user_embeddings, valid_mask
@@ -94,7 +98,6 @@ class LearnablePositionalEmbeddingInputFeaturesPreprocessor(
 class LearnablePositionalEmbeddingRatedInputFeaturesPreprocessor(
     InputFeaturesPreprocessorModule
 ):
-
     def __init__(
         self,
         max_sequence_len: int,
@@ -156,7 +159,6 @@ class LearnablePositionalEmbeddingRatedInputFeaturesPreprocessor(
 
 
 class CombinedItemAndRatingInputFeaturesPreprocessor(InputFeaturesPreprocessorModule):
-
     def __init__(
         self,
         max_sequence_len: int,
