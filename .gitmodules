@@ -1,0 +1,3 @@
+[submodule "third_parties/mlperf_inference"]
+	path = third_parties/mlperf_inference
+	url = https://github.com/mlcommons/inference.git
