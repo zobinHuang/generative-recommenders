@@ -1,3 +1,6 @@
 [submodule "third_parties/mlperf_inference"]
 	path = third_parties/mlperf_inference
 	url = https://github.com/mlcommons/inference.git
+[submodule "third_parties/gWatch"]
+	path = third_parties/gWatch
+	url = https://github.com/Xtra-Computing/gWatch.git
